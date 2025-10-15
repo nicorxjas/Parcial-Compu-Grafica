@@ -1,8 +1,6 @@
-### definición simple de una cámara con su matrix de perspectiva y de view (lookAt). Útil para obtener las coordenadas de la cámara y su proyección (qué es lo que está viendo).
-
-import glm
 from ray import Ray
-# Datos de una camara simple
+import glm
+
 class Camera:
     def __init__(self, position, target, up, fov, aspect, near, far):
         self.position = glm.vec3(*position)
@@ -12,6 +10,17 @@ class Camera:
         self.aspect = aspect
         self.near = near
         self.far = far
+        self.__sky_color_top = None
+        self.__sky_color_bottom = None
+
+    def set_sky_colors(self, top, bottom):
+        self.__sky_color_top = glm.vec3(*top)
+        self.__sky_color_bottom = glm.vec3(*bottom)
+
+    def get_sky_gradient(self, height):
+        point = pow(0.5 * (height + 1.0), 1.5)
+        return (1.0 - point) * self.__sky_color_bottom + point * self.__sky_color_top
+
 
     def get_perspective_matrix(self):
         return glm.perspective(glm.radians(self.fov), self.aspect, self.near, self.far)

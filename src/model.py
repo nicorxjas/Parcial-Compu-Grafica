@@ -31,7 +31,6 @@ class VertexLayout:
 class Model:
     def __init__(self, vertices=None, indices=None, colors=None, normals=None, texcoords=None):
         self.indices = indices
-        self.vertices = vertices
         self.vertex_layout = VertexLayout()
         if vertices is not None:
             self.vertex_layout.add_attribute("in_pos", "3f", vertices)

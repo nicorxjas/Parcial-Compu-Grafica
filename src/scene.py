@@ -20,23 +20,12 @@ class Scene:
         self.objects.append(obj)
         self.graphics[obj.name] = Graphics(self.ctx, shader_program, obj.vertices, obj.indices)
 
-   ## def render(self):
-     ##   self.view = self.camera.get_view_matrix()
-     ## self.projection = self.camera.get_perspective_matrix()
-        
-     ##   for obj in self.objects:
-       ##     model_matrix = obj.get_model_matrix()
-         ##   mvp_matrix = self.projection * self.view * model_matrix
-           ## graphics = self.graphics[obj.name]
-            ## graphics.shader_program.set_uniform('Mvp', mvp_matrix)
-            ## graphics.vao.render()
-    #
-
     def render(self):
         self.time += 0.01 
         for obj in self.objects: 
-            obj.rotation.y += 0.57
-            obj.rotation.x += 0.52
+            obj.rotation.y += 0.6
+            obj.rotation.x += 0.8
+            obj.rotation.z += 0.4
             obj.position.x += math.sin(self.time) * 0.01
             obj.position.y += math.cos(self.time) * 0.01
             obj.position.z += math.cos(self.time) * 0.01

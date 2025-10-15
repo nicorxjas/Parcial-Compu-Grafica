@@ -17,7 +17,7 @@ camera = Camera((0, 0, 6), (0, 0, 0), (0, 1, 0), 45, window.width / window.heigh
 
 # Objetos
 cube1 = Cube((-2, 0, 0), (0, 45, 0), (1, 1, 1), name="Cube1")
-cube2 = Cube((2, 0, 0), (0, 45, 0), (1, 1, 1), name="Cube2")
+cube2 = Cube((2, 0, 0), (0, 45, 0), (1, 0.5, 1), name="Cube2")
 # sphere1 = Sphere((0, 0, 0), (0, 45, 0), (1, 1, 1), name="Sphere1")
 
 # Escena

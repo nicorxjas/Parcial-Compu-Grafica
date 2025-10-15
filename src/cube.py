@@ -1,5 +1,5 @@
 from model import Model
-from hit import HitBox, HitBoxOBB
+from hit import HitBoxOBB
 import numpy as np
 import glm
 

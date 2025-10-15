@@ -6,7 +6,7 @@ import math
 from time import time
 
 class Scene:
-    def __init__(self, ctx, camera):
+    def _init_(self, ctx, camera):
         self.ctx = ctx
         self.objects = []
         self.graphics = {}
@@ -23,9 +23,8 @@ class Scene:
     def render(self):
         self.time += 0.01 
         for obj in self.objects: 
-            obj.rotation.y += 0.6
-            obj.rotation.x += 0.8
-            obj.rotation.z += 0.4
+            obj.rotation.y += 0.57
+            obj.rotation.x += 0.52
             obj.position.x += math.sin(self.time) * 0.01
             obj.position.y += math.cos(self.time) * 0.01
             obj.position.z += math.cos(self.time) * 0.01

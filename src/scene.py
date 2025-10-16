@@ -4,7 +4,9 @@ from graphics import Graphics
 import glm
 import math 
 from time import time
-from raytracer import RayTracer
+from raytracer import RayTracer, RayTracerGPU
+import numpy as np
+from graphics import ComputeGraphics
 
 class Scene:
     def __init__(self, ctx, camera):
@@ -107,21 +109,6 @@ class RaySceneGPU(Scene):
         self._update_matrix()
 
         self._matrix_to_ssbo()
-    
-    def _update_matrix(self):
-        self.primitives = []
-
-        for i, (name, graphics) in enumerate(self.graphics.items()):
-            graphics.create_primary(self.primitives)
-            graphics.create_transformation_matrix(self.models_f, i)
-            graphics.create_inverse_transformation_matrix(self.inv_f, i)
-            graphics.create_material_matrix(self.mats_f, i)
-
-    def _matrix_to_ssbo(self):
-        self.raytracer.matrix_to_ssbo(self.models_f, 0)
-        self.raytracer.matrix_to_ssbo(self.inv_f, 1)
-        self.raytracer.matrix_to_ssbo(self.mats_f, 2)
-        self.raytracer.primitives_to_ssbo(self.primitives, 3)
 
     def render(self):
         self.time += 0.01
@@ -134,6 +121,22 @@ class RaySceneGPU(Scene):
             self._update_matrix()
             self._matrix_to_ssbo()
             self.raytracer.run()
+
+    def _matrix_to_ssbo(self):
+        self.raytracer.matrix_to_ssbo(self.models_f, 0)
+        self.raytracer.matrix_to_ssbo(self.inv_f, 1)
+        self.raytracer.matrix_to_ssbo(self.mats_f, 2)
+        self.raytracer.primitives_to_ssbo(self.primitives, 3)
+    
+    def _update_matrix(self):
+        self.primitives = []
+
+        for i, (name, graphics) in enumerate(self.graphics.items()):
+            graphics.create_primitive(self.primitives)
+            graphics.create_transformation_matrix(self.models_f, i)
+            graphics.create_inverse_transformation_matrix(self.inv_f, i)
+            graphics.create_material_matrix(self.mats_f, i)
+
 
     def on_resize(self, width, height):
         super().on_resize(width, height)

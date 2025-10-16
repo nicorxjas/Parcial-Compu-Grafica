@@ -10,28 +10,27 @@ layout(std430, binding = 3) buffer BVH { vec4 bvhNodes[]; };
 
 uniform vec3 cameraPosition;
 uniform mat4 inverseViewMatrix;
-uniform float fieldView;
+uniform float fieldOfView;
+
 const float EPS = 1e-4;
 const int MAX_RAY_BOUNCES = 3;
 const vec3 LIGHT_DIRECTION = normalize(vec3(0.5, 1.0, 0.1));
 const vec3 LIGHT_COLOR = vec3(1.0, 1.0, 1.0);
 
 struct RayHit {
-    bool didHit;         // ¿Hubo intersección?
-    float distance;      // Distancia al punto de impacto
-    vec3 position;       // Posición del impacto (mundo)
-    vec3 normal;         // Normal de la superficie
-    vec3 color;          // Color del material
-    float reflectivity;  // Reflectividad (0-1)
+    bool didHit;
+    float distance;
+    vec3 position;
+    vec3 color;
+    float reflectivity;
+    vec3 normal;
 };
 
-bool intersectAxisAlignedBox(vec3 rayOrigin, vec3 rayDirection,
-                             vec3 boxMin, vec3 boxMax,
-                             out float timeNear, out float timeFar) {
+bool intersectAxisAlignedBox(vec3 rayOrigin, vec3 rayDirection, vec3 boxMin, vec3 boxMax, out float timeNear, out float timeFar) {
     vec3 timeAtMinPlane = (boxMin - rayOrigin) / rayDirection;
     vec3 timeAtMaxPlane = (boxMax - rayOrigin) / rayDirection;
-    vec3 timeMin = min(timeAtMinPlane, timeAtMaxPlane);
-    vec3 timeMax = max(timeAtMinPlane, timeAtMaxPlane);
+    vec3 timeMin = min(timeAtMaxPlane, timeAtMinPlane);
+    vec3 timeMax = max(timeAtMaxPlane, timeAtMinPlane);
     timeNear = max(max(timeMin.x, timeMin.y), timeMin.z);
     timeFar = min(min(timeMax.x, timeMax.y), timeMax.z);
     return timeFar >= max(timeNear, 0.0);
@@ -43,18 +42,15 @@ bool intersectOrientedBox(int objectIndex, vec3 rayOriginWorld, vec3 rayDirectio
     vec3 rayOriginLocal = (inverseTransform * vec4(rayOriginWorld, 1.0)).xyz;
     vec3 rayDirectionLocal = normalize((inverseTransform * vec4(rayDirectionWorld, 0.0)).xyz);
 
-
     float timeNear, timeFar;
     vec3 boxMinLocal = vec3(-1.0);
     vec3 boxMaxLocal = vec3(1.0);
-    bool intercects = intersectAxisAlignedBox(rayOriginLocal, rayDirectionLocal, boxMinLocal, boxMaxLocal, timeNear, timeFar);
+    bool intersects = intersectAxisAlignedBox(rayOriginLocal, rayDirectionLocal, boxMinLocal, boxMaxLocal, timeNear, timeFar);
    
-    if (!intercects) return false;
-
+    if (!intersects) return false;
 
     float timeLocal = (timeNear > EPS) ? timeNear : timeFar;
     vec3 hitPositionLocal = rayOriginLocal + rayDirectionLocal * timeLocal;
-
 
     vec3 distanceToPositiveFaces = abs(hitPositionLocal - vec3(1.0));
     vec3 distanceToNegativeFaces = abs(hitPositionLocal + vec3(1.0));
@@ -69,7 +65,6 @@ bool intersectOrientedBox(int objectIndex, vec3 rayOriginWorld, vec3 rayDirectio
     else
         normalLocal = vec3(0, 0, sign(hitPositionLocal.z));
 
-
     mat3 normalTransform = transpose(inverse(mat3(modelMatrices[objectIndex])));
     hitNormal = normalize(normalTransform * normalLocal);
     hitPosition = (modelMatrices[objectIndex] * vec4(hitPositionLocal, 1.0)).xyz;
@@ -78,23 +73,19 @@ bool intersectOrientedBox(int objectIndex, vec3 rayOriginWorld, vec3 rayDirectio
     return hitDistance > EPS;
 }
 
-
 RayHit traverseBoundingVolumeHierarchy(vec3 rayOrigin, vec3 rayDirection) {
     RayHit closestHit;
     closestHit.didHit = false;
     closestHit.distance = 1e20;
 
-
     int nodeStack[32];
     int stackPointer = 0;
     nodeStack[stackPointer++] = 0;
-
 
     while (stackPointer > 0) {
         int nodeIndex = nodeStack[--stackPointer];
         vec4 boundingBoxMin = bvhNodes[nodeIndex];
         vec4 boundingBoxMax = bvhNodes[nodeIndex + 1];
-
 
         float timeNear, timeFar;
         bool intersects = intersectAxisAlignedBox(rayOrigin, rayDirection, boundingBoxMin.xyz, boundingBoxMax.xyz, timeNear, timeFar);
@@ -102,10 +93,8 @@ RayHit traverseBoundingVolumeHierarchy(vec3 rayOrigin, vec3 rayDirection) {
         if (!intersects || timeNear >= closestHit.distance)
             continue;
 
-
         int leftChildIndex = int(boundingBoxMin.w);
         int rightChildOrPrimitiveIndex = int(boundingBoxMax.w);
-
 
         if (rightChildOrPrimitiveIndex >= 0) {
             float hitDist;
@@ -113,7 +102,13 @@ RayHit traverseBoundingVolumeHierarchy(vec3 rayOrigin, vec3 rayDirection) {
             vec3 hitNorm;
             if (intersectOrientedBox(rightChildOrPrimitiveIndex, rayOrigin, rayDirection,
                                      hitDist, hitPos, hitNorm) && hitDist < closestHit.distance) {
-                // Acá va el código para darle valor a closestHit !!
+                closestHit.didHit = true;
+                closestHit.distance = hitDist;
+                closestHit.position = hitPos;
+                closestHit.normal = hitNorm;
+                vec4 material = materialData[rightChildOrPrimitiveIndex];
+                closestHit.color = material.rgb;
+                closestHit.reflectivity = material.a;
             }
         } else {
             if (leftChildIndex >= 0)
@@ -124,10 +119,6 @@ RayHit traverseBoundingVolumeHierarchy(vec3 rayOrigin, vec3 rayDirection) {
         }
     }
     return closestHit;
-}
-
-float calculateShadow(vec3 surfacePosition, vec3 surfaceNormal) {
-    vec3 shadowRayOrigin = surfacePosition + surfaceNormal * EPS;
 }
 
 float calculateShadow(vec3 surfacePosition, vec3 surfaceNormal) {
@@ -150,15 +141,12 @@ vec3 calculateShading(vec3 surfaceColor, vec3 surfacePosition, vec3 surfaceNorma
     return shadedColor;
 }
 
-
 void main() {
     ivec2 pixelCoords = ivec2(gl_GlobalInvocationID.xy);
     ivec2 imageSize = imageSize(outputImage);
 
     if (pixelCoords.x >= imageSize.x || pixelCoords.y >= imageSize.y)
         return;
-
-    vec4 color = vec4(1.0, 0.0, 0.0, 1.0);
 
     float fovAdjustment = tan(radians(fieldOfView) * 0.5);
     float aspectRatio = float(imageSize.x) / float(imageSize.y);
@@ -173,21 +161,14 @@ void main() {
     vec3 rayDirection = normalize((inverseViewMatrix * vec4(rayDirCamera, 0.0)).xyz);
     vec3 rayOrigin = (inverseViewMatrix * vec4(cameraPosition, 1.0)).xyz;
 
-    float hitDist;
-    vec3 hitPos = (vec4(-1.0) * modelMatrices[0]).xyz;
-    vec3 hitNorm = (vec4(1.0) * modelMatrices[0]).xyz;
-
     vec3 finalColor;
-
     RayHit hit = traverseBoundingVolumeHierarchy(rayOrigin, rayDirection);
 
     if (hit.didHit) {
-        finalColor = hit.color;
+        finalColor = calculateShading(hit.color, hit.position, hit.normal, -rayDirection);
     } else {
         finalColor = vec3(0.0, 0.0, 0.0);
     }
 
     imageStore(outputImage, pixelCoords, vec4(finalColor, 1.0));
-
 }
-
